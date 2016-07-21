@@ -15,5 +15,7 @@ namespace xSQLWebCrawler.Domain.Entities
         public int SiteId { get; set; }
         [ForeignKey("SiteId")]
         public Site Site { get; set; }
+
+        
     }
 }

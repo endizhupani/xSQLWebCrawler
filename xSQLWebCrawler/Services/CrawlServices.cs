@@ -1,43 +1,67 @@
 ﻿using Abot.Crawler;
 using Abot.Poco;
+using HtmlAgilityPack;
 using log4net;
+using Ninject;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
+using xSQLWebCrawler.Domain.Abstract;
+using xSQLWebCrawler.Domain.Entities;
+using xSQLWebCrawler.Infrastructure;
 
 namespace xSQLWebCrawler.Services
 {
     class CrawlServices
     {
+        private IEntitiesRepository repository;
         private static readonly ILog logger = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
+        private List<ForbiddenSearchPatern> siteForbiddenPatterns = null;
+        [ThreadStatic]
+        private static bool foundOldPost = false;
+        //private Uri siteCurrentlyBeingCrawled = null;
+
+        public CrawlServices()
+        {
+            IKernel kernel = new StandardKernel();
+            NInjectDependencyResolver depResolver = new NInjectDependencyResolver(kernel);
+            depResolver.AddBindings();
+            repository = kernel.Get<IEntitiesRepository>();
+        }
+
         /// <summary>
         /// Starts the crawling
         /// </summary>
         public void DoCrawl()
         {
-            //set up crawler
-            PoliteWebCrawler crawler = new PoliteWebCrawler();
-            crawler.ShouldCrawlPage((pageToCrawl, crawlContext) =>
+            List<Site> sitesToCrawl = repository.Sites.ToList();
+            foreach (Site s in sitesToCrawl)
             {
-                return this.ShouldCrawl(pageToCrawl, crawlContext);    
-            });
+                //set up crawler
+                PoliteWebCrawler crawler = new PoliteWebCrawler();
+                crawler.ShouldCrawlPage((pageToCrawl, crawlContext) =>
+                {
+                    return this.ShouldCrawl(pageToCrawl, crawlContext);
+                });
 
+                //attach events
+                crawler.PageCrawlStartingAsync += crawler_ProcessPageCrawlStarting;
+                crawler.PageCrawlCompletedAsync += crawler_ProcessPageCrawlCompleted;
+                crawler.PageCrawlDisallowedAsync += crawler_PageCrawlDisallowed;
+                crawler.PageLinksCrawlDisallowedAsync += crawler_PageLinksCrawlDisallowed;
 
-            //attach events
-            crawler.PageCrawlStartingAsync += crawler_ProcessPageCrawlStarting;
-            crawler.PageCrawlCompletedAsync += crawler_ProcessPageCrawlCompleted;
-            crawler.PageCrawlDisallowedAsync += crawler_PageCrawlDisallowed;
-            crawler.PageLinksCrawlDisallowedAsync += crawler_PageLinksCrawlDisallowed;
-            CrawlResult result = crawler.Crawl(new Uri("http://stackoverflow.com")); //This is synchronous, it will not go to the next line until the crawl has completed
-
-
-
-            if (result.ErrorOccurred)
-                logger.Error(String.Format("Crawl of {0} completed with error: {1}", result.RootUri.AbsoluteUri, result.ErrorException.Message));
-            else
-                logger.Info(String.Format("Crawl of {0} completed without error.", result.RootUri.AbsoluteUri));
+                siteForbiddenPatterns = repository.ForbiddenSearchPatterns.Where(fp => fp.SiteId == s.SiteId).ToList();
+                LogServices.LogForbiddenPatterns(siteForbiddenPatterns);
+                foundOldPost = false;
+                CrawlResult result = crawler.Crawl(s.SiteUri); //This is synchronous, it will not go to the next line until the crawl has completed
+                if (result.ErrorOccurred)
+                    logger.Error(String.Format("Crawl of {0} was not completed. Error: {1}", result.RootUri.AbsoluteUri, result.ErrorException.Message));
+                else
+                    logger.Info(String.Format("Crawl of {0} completed without error.", result.RootUri.AbsoluteUri));
+            }
         }
-
-
 
         /// <summary>
         /// Specifies actions to be undertaken before the crawling of a site starts
@@ -47,9 +71,9 @@ namespace xSQLWebCrawler.Services
         void crawler_ProcessPageCrawlStarting(object sender, PageCrawlStartingArgs e)
         {
             PageToCrawl pageToCrawl = e.PageToCrawl;
+            e.CrawlContext.IsCrawlStopRequested = false;
             logger.Info(String.Format("About to crawl link {0} which was found on page {1}", pageToCrawl.Uri.AbsoluteUri, pageToCrawl.ParentUri.AbsoluteUri));
         }
-
 
         /// <summary>
         /// Specifies actions to be undertaken after the crawling of a site is finished
@@ -60,16 +84,26 @@ namespace xSQLWebCrawler.Services
         {
             CrawledPage crawledPage = e.CrawledPage;
 
+
             if (crawledPage.WebException != null || crawledPage.HttpWebResponse.StatusCode != HttpStatusCode.OK)
                 logger.Error(String.Format("Crawl of page failed {0}", crawledPage.Uri.AbsoluteUri));
             else
+            {
                 logger.Info(String.Format("Crawl of page succeeded {0}", crawledPage.Uri.AbsoluteUri));
+                HtmlDocument pageHtml = crawledPage.HtmlDocument;
+                foundOldPost = ScrapeServices.IsOldPost(pageHtml, DateTime.Now.AddMonths(0 - Properties.Settings.Default.MaxNumberOfMonthsToCheckQuestions));
+                if (foundOldPost)
+                {
+                    e.CrawlContext.IsCrawlStopRequested = true;
+                }
+                //else {
+                //    e.CrawlContext.IsCrawlStopRequested = false;
+                //}
+            }
 
             if (string.IsNullOrEmpty(crawledPage.Content.Text))
                 logger.Info(String.Format("Page had no content {0}", crawledPage.Uri.AbsoluteUri));
         }
-
-
 
         /// <summary>
         /// Specifies actions to be undertaken if crawling the links of a page is not allowed
@@ -82,7 +116,6 @@ namespace xSQLWebCrawler.Services
             logger.Info(String.Format("Did not crawl the links on page {0} due to {1}", crawledPage.Uri.AbsoluteUri, e.DisallowedReason));
         }
 
-
         /// <summary>
         /// Specifies actions to be undertaken if crawling the page is not allowed
         /// </summary>
@@ -94,15 +127,45 @@ namespace xSQLWebCrawler.Services
             logger.Info(String.Format("Did not crawl page {0} due to {1}", pageToCrawl.Uri.AbsoluteUri, e.DisallowedReason));
         }
 
-
-
         protected CrawlDecision ShouldCrawl(PageToCrawl pageToCrawl, CrawlContext crawlContext)
         {
+
             CrawlDecision decision = new CrawlDecision { Allow = true };
-            if (pageToCrawl.Uri.Authority == "google.com")
-                return new CrawlDecision { Allow = false, Reason = "Dont want to crawl google pages" };
+            ForbiddenSearchPatern patternFound = null;
+            if (this.HasForbiddenPatterns(pageToCrawl.Uri.ToString(), out patternFound))
+            {
+                return new CrawlDecision { Allow = false, Reason = String.Format("The Uri contains one of the forbidden patterns (pattern: {0})", patternFound.RegEx) };
+            }
+            if (foundOldPost)
+            {
+                return new CrawlDecision { Allow = false, Reason = String.Format("Posts were found that were more than {0} months old", Properties.Settings.Default.MaxNumberOfMonthsToCheckQuestions) };
+            }
 
             return decision;
+        }
+
+        /// <summary>
+        /// Checks a string to see if it contains one of the patterns in the DB.
+        /// </summary>
+        /// <param name="stringToCheck">string to check for patterns</param>
+        /// <param name="patternFound">takes the value of the pattern found in the string</param>
+        /// <returns>True if a pattern is matched, false otherwise</returns>
+        protected bool HasForbiddenPatterns(string stringToCheck, out ForbiddenSearchPatern patternFound)
+        {
+
+            foreach (ForbiddenSearchPatern pattern in siteForbiddenPatterns)
+            {
+
+                Regex regEx = new Regex(pattern.RegEx,
+                    RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+                if (regEx.IsMatch(stringToCheck))
+                {
+                    patternFound = pattern;
+                    return true;
+                }
+            }
+            patternFound = null;
+            return false;
         }
     }
 }
