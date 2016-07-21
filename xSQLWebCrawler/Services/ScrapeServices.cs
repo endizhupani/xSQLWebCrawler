@@ -79,10 +79,15 @@ namespace xSQLWebCrawler.Services
         /// </summary>
         /// <param name="keyWords">A list of keywords to look for</param>
         /// <param name="page">The HTML page to search for keywords</param>
-        /// <param name="keywordsFound">A list of keywords found in the page</param>
+        /// <param name="keyWordsFound">A list of keywords found in the page</param>
         /// <returns>True if any of the keywords were found, false otherwise</returns>
-        public static bool CheckForKeyWords(List<string> keyWords, HtmlDocument page, out List<string> keywordsFound)
+        public static bool CheckForKeyWords(List<string> keyWords, HtmlDocument page, out List<string> keyWordsFound)
         {
+            HtmlNode body = page.DocumentNode.SelectSingleNode("//body");
+            foreach (string keyword in keyWords)
+            {
+
+            }
             throw new NotImplementedException("This method is not yet implemented");
         }
 

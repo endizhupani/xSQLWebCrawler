@@ -125,6 +125,7 @@
     <Compile Include="Services\CrawlServices.cs" />
     <Compile Include="Services\LogServices.cs" />
     <Compile Include="Services\ScrapeServices.cs" />
+    <Compile Include="Services\StringSearch.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">
