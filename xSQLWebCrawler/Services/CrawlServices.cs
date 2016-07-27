@@ -4,6 +4,8 @@ using HtmlAgilityPack;
 using log4net;
 using Ninject;
 using System;
+using System.Data;
+using System.Data.Entity;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -19,6 +21,7 @@ namespace xSQLWebCrawler.Services
         private IEntitiesRepository repository;
         private static readonly ILog logger = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private List<ForbiddenSearchPatern> siteForbiddenPatterns = null;
+        private List<ProccessedLink> lastProcessedLinks = null;
         [ThreadStatic]
         private static bool foundOldPost = false;
         //private Uri siteCurrentlyBeingCrawled = null;
@@ -29,16 +32,19 @@ namespace xSQLWebCrawler.Services
             NInjectDependencyResolver depResolver = new NInjectDependencyResolver(kernel);
             depResolver.AddBindings();
             repository = kernel.Get<IEntitiesRepository>();
+            lastProcessedLinks = repository.GetProcessedLinks(10);
         }
 
         /// <summary>
         /// Starts the crawling
         /// </summary>
-        public void DoCrawl()
+        public async void DoCrawl()
         {
-            List<Site> sitesToCrawl = repository.Sites.ToList();
+            List<Site> sitesToCrawl = await repository.GetSitesAsync(true, true);
             foreach (Site s in sitesToCrawl)
             {
+                siteForbiddenPatterns = s.ForbiddenSearchPatterns.ToList();
+                LogServices.LogForbiddenPatterns(siteForbiddenPatterns);
                 //set up crawler
                 PoliteWebCrawler crawler = new PoliteWebCrawler();
                 crawler.ShouldCrawlPage((pageToCrawl, crawlContext) =>
@@ -52,8 +58,7 @@ namespace xSQLWebCrawler.Services
                 crawler.PageCrawlDisallowedAsync += crawler_PageCrawlDisallowed;
                 crawler.PageLinksCrawlDisallowedAsync += crawler_PageLinksCrawlDisallowed;
 
-                siteForbiddenPatterns = repository.ForbiddenSearchPatterns.Where(fp => fp.SiteId == s.SiteId).ToList();
-                LogServices.LogForbiddenPatterns(siteForbiddenPatterns);
+                
                 foundOldPost = false;
                 CrawlResult result = crawler.Crawl(s.SiteUri); //This is synchronous, it will not go to the next line until the crawl has completed
                 if (result.ErrorOccurred)
@@ -140,6 +145,11 @@ namespace xSQLWebCrawler.Services
             {
                 return new CrawlDecision { Allow = false, Reason = String.Format("Posts were found that were more than {0} months old", Properties.Settings.Default.MaxNumberOfMonthsToCheckQuestions) };
             }
+            if (HasBeenProccessed(pageToCrawl.Uri.ToString(), lastProcessedLinks))
+            {
+                return new CrawlDecision { Allow = false, Reason = String.Format("Links beyond this point have already been processed") };
+            }
+            
 
             return decision;
         }
@@ -167,5 +177,24 @@ namespace xSQLWebCrawler.Services
             patternFound = null;
             return false;
         }
+
+        /// <summary>
+        /// Checks if a link is in the list of processed links
+        /// </summary>
+        /// <param name="link">Link to be checked</param>
+        /// <param name="processedLinks">List of links to be checked against.</param>
+        /// <returns></returns>
+        protected bool HasBeenProccessed(string link, List<ProccessedLink> processedLinks)
+        {
+            foreach (ProccessedLink pLink in processedLinks)
+            {
+                if (pLink.StrUri == link)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
     }
 }

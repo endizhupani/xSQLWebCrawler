@@ -29,6 +29,69 @@ namespace xSQLWebCrawler.Domain.Concrete
             }
         }
 
+        public IEnumerable<ProccessedLink> ProcessedLinks
+        {
+            get
+            {
+                return context.ProccessedLinks;
+            }
+        }
+
+        /// <summary>
+        /// Get n last processed links from the database
+        /// </summary>
+        /// <param name="numberOfLinks">Number of last processed links to get. 0 to get all</param>
+        /// <returns>A collection of the links.</returns>
+        public async Task<List<ProccessedLink>> GetProcessedLinksAsync(int numberOfLinks = 0) {
+            if (numberOfLinks < 0)
+            {
+                throw new ArgumentOutOfRangeException("number of links must be at least 0");
+            }
+            else if (numberOfLinks == 0)
+            {
+                return await context.ProccessedLinks.OrderByDescending(pl => pl.Created).ToListAsync();
+            }
+            else {
+                return await context.ProccessedLinks.OrderByDescending(pl => pl.Created).Take(numberOfLinks).ToListAsync();
+            }
+        }
+
+        public List<ProccessedLink> GetProcessedLinks(int numberOfLinks = 0) {
+            if (numberOfLinks < 0)
+            {
+                throw new ArgumentOutOfRangeException("number of links must be at least 0");
+            }
+            else if (numberOfLinks == 0)
+            {
+                return context.ProccessedLinks.OrderByDescending(pl => pl.Created).ToList();
+            }
+            else
+            {
+                return context.ProccessedLinks.OrderByDescending(pl => pl.Created).Take(numberOfLinks).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets all the sites from the database.
+        /// </summary>
+        /// <param name="includeKeyWords">If true, get all the keyword combinations associated with the site</param>
+        /// <param name="includeForbiddenSearchPatterns">If true, get all the forbidden search patterns associated with the site</param>
+        /// <returns>Collection of sites</returns>
+        public async Task<List<Site>> GetSitesAsync(bool includeKeyWords = false, bool includeForbiddenSearchPatterns = false) {
+            if (includeForbiddenSearchPatterns && includeKeyWords)
+            {
+                return await context.Sites.Include(s => s.ForbiddenSearchPatterns).Include(s => s.KeywordCombinations.Select(c => c.KeyWords)).ToListAsync();
+            }
+            else if (includeForbiddenSearchPatterns)
+            {
+                return await context.Sites.Include(s => s.ForbiddenSearchPatterns).ToListAsync();
+            }
+            else if (includeKeyWords)
+            {
+                return await context.Sites.Include(s => s.KeywordCombinations.Select(c => c.KeyWords)).ToListAsync();
+            }
+            return await context.Sites.ToListAsync();
+        }
         /// <summary>
         /// Adds a site to the Sites collection
         /// </summary>
@@ -75,6 +138,32 @@ namespace xSQLWebCrawler.Domain.Concrete
             }
             else {
                 throw new ArgumentException("Values of the pattern are not valid");
+            }
+        }
+
+
+        /// <summary>
+        /// Adds or updates a processed link in the database
+        /// </summary>
+        /// <param name="link">The link to be added or updated</param>
+        /// <returns>True if the operation was successfull, false otherwise</returns>
+        public async Task<bool> AddOrUpdateProcessedLink(ProccessedLink link)
+        {
+            if (!String.IsNullOrEmpty(link.StrUri))
+            {
+                ProccessedLink dbLink = await context.ProccessedLinks.SingleOrDefaultAsync(pl => pl.ProccessedLinkId == link.ProccessedLinkId);
+                if (dbLink != null)
+                {
+                    context.Entry(link).State = EntityState.Modified;
+                }
+                else
+                {
+                    context.ProccessedLinks.Add(link);
+                }
+                return true;
+            }
+            else {
+                throw new ArgumentException("Invalid values for the properties");
             }
         }
 

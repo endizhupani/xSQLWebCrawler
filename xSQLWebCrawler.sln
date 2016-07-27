@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xSQLWebCrawler", "xSQLWebCrawler\xSQLWebCrawler.csproj", "{0BE0A69F-0CC7-4789-BED2-1353577C8035}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xSQLWebCrawler.Tests", "xSQLWebCrawler.Tests\xSQLWebCrawler.Tests.csproj", "{E60A6AB3-DA47-4E50-9F5F-DFCF5927F494}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Abot", "Abot\Abot.csproj", "{0CDCD537-4B0E-4514-966F-F425CDC92BA4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{E60A6AB3-DA47-4E50-9F5F-DFCF5927F494}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E60A6AB3-DA47-4E50-9F5F-DFCF5927F494}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E60A6AB3-DA47-4E50-9F5F-DFCF5927F494}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CDCD537-4B0E-4514-966F-F425CDC92BA4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CDCD537-4B0E-4514-966F-F425CDC92BA4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CDCD537-4B0E-4514-966F-F425CDC92BA4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CDCD537-4B0E-4514-966F-F425CDC92BA4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

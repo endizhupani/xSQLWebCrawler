@@ -13,6 +13,11 @@ namespace xSQLWebCrawler.Domain.Entities
         [Key]
         [Required]
         public int SiteId { get; set; }
+        public ICollection<ForbiddenSearchPatern> ForbiddenSearchPatterns { get; set; }
+        /// <summary>
+        /// Keywords to be searched for in the site
+        /// </summary>
+        public ICollection<KeywordCombination> KeywordCombinations { get; set; }
         public string Name { get; set; }
         public string Uri { get; set; }
         [NotMapped]
@@ -22,6 +27,6 @@ namespace xSQLWebCrawler.Domain.Entities
                 return new Uri(Uri);
             }
         }
-        public IEnumerable<ForbiddenSearchPatern> ForbiddenSearchPatterns { get; set; }
+       
     }
 }

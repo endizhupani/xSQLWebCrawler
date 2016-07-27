@@ -50,8 +50,18 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="BoyerMooreTests.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\xSQLWebCrawler\xSQLWebCrawler.csproj">
+      <Project>{0be0a69f-0cc7-4789-bed2-1353577c8035}</Project>
+      <Name>xSQLWebCrawler</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

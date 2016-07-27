@@ -6,14 +6,14 @@ namespace xSQLWebCrawler.Migrations
     using System.Linq;
     using Domain.Entities;
 
-    internal sealed class Configuration : DbMigrationsConfiguration<Domain.Entities.xSQLCrawlerContext>
+    internal sealed class Configuration : DbMigrationsConfiguration<xSQLCrawlerContext>
     {
         public Configuration()
         {
             AutomaticMigrationsEnabled = true;
         }
 
-        protected override void Seed(xSQLWebCrawler.Domain.Entities.xSQLCrawlerContext context)
+        protected override void Seed(xSQLCrawlerContext context)
         {
             //  This method will be called after migrating to the latest version.
 
@@ -29,5 +29,7 @@ namespace xSQLWebCrawler.Migrations
             //
             
         }
+
+        
     }
 }
