@@ -34,7 +34,7 @@ namespace xSQLWebCrawler.Domain.Abstract
         /// </summary>
         /// <param name="link">The link to be added or updated</param>
         /// <returns>True if the operation was successfull, false otherwise</returns>
-        Task<bool> AddOrUpdateProcessedLink(ProccessedLink link);
+        Task<bool> AddOrUpdateProcessedLinkAsync(ProccessedLink link);
         /// <summary>
         /// Adds or updates a pattern object
         /// </summary>
@@ -52,5 +52,10 @@ namespace xSQLWebCrawler.Domain.Abstract
         /// </summary>
         /// <returns>True if the opperation was successful, false otherwise</returns>
         Task<bool> SaveChangesAsync();
+        /// <summary>
+        /// Saves changes to the database
+        /// </summary>
+        /// <returns>True if the opperation was successful, false otherwise</returns>
+        bool SaveChanges();
     }
 }

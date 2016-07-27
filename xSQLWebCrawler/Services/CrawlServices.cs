@@ -5,7 +5,6 @@ using log4net;
 using Ninject;
 using System;
 using System.Data;
-using System.Data.Entity;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -13,6 +12,7 @@ using System.Text.RegularExpressions;
 using xSQLWebCrawler.Domain.Abstract;
 using xSQLWebCrawler.Domain.Entities;
 using xSQLWebCrawler.Infrastructure;
+using xSQLWebCrawler.Helpers;
 
 namespace xSQLWebCrawler.Services
 {
@@ -22,6 +22,9 @@ namespace xSQLWebCrawler.Services
         private static readonly ILog logger = LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
         private List<ForbiddenSearchPatern> siteForbiddenPatterns = null;
         private List<ProccessedLink> lastProcessedLinks = null;
+        private List<PreProcessedWord> preprocessedKeywords = null;
+        private Site siteBeingCrawled = null;
+        private List<LinkOfInterest> linksFound;
         [ThreadStatic]
         private static bool foundOldPost = false;
         //private Uri siteCurrentlyBeingCrawled = null;
@@ -33,6 +36,7 @@ namespace xSQLWebCrawler.Services
             depResolver.AddBindings();
             repository = kernel.Get<IEntitiesRepository>();
             lastProcessedLinks = repository.GetProcessedLinks(10);
+            linksFound = new List<LinkOfInterest>();
         }
 
         /// <summary>
@@ -43,6 +47,14 @@ namespace xSQLWebCrawler.Services
             List<Site> sitesToCrawl = await repository.GetSitesAsync(true, true);
             foreach (Site s in sitesToCrawl)
             {
+                siteBeingCrawled = s;
+                List<Keyword> siteKeywords = new List<Keyword>();
+                foreach (KeywordCombination kCombo in s.KeywordCombinations)
+                {
+                    siteKeywords = siteKeywords.Concat(kCombo.KeyWords).Distinct().ToList();
+                }
+                preprocessedKeywords = BoyerMooreHelpers.PreprocessKeywords(siteKeywords);
+                siteKeywords = null;
                 siteForbiddenPatterns = s.ForbiddenSearchPatterns.ToList();
                 LogServices.LogForbiddenPatterns(siteForbiddenPatterns);
                 //set up crawler
@@ -66,6 +78,9 @@ namespace xSQLWebCrawler.Services
                 else
                     logger.Info(String.Format("Crawl of {0} completed without error.", result.RootUri.AbsoluteUri));
             }
+            //report the links that were found
+            ReportingHelpers savedLinksReporter = new ReportingHelpers();
+            savedLinksReporter.SaveLinksToDatabase(linksFound);
         }
 
         /// <summary>
@@ -101,9 +116,21 @@ namespace xSQLWebCrawler.Services
                 {
                     e.CrawlContext.IsCrawlStopRequested = true;
                 }
-                //else {
-                //    e.CrawlContext.IsCrawlStopRequested = false;
-                //}
+                else {
+                    //do the search
+                    foreach (KeywordCombination kCombo in siteBeingCrawled.KeywordCombinations)
+                    {
+                        List<PreProcessedWord> wordsToSearchFor = preprocessedKeywords.Where(p => kCombo.CombinationText.Contains(p.Word)).ToList();
+                        if (pageHtml.HasAllKeyWords(wordsToSearchFor))
+                        {
+                            //record links found
+                            linksFound.Add(new LinkOfInterest {
+                                Uri = crawledPage.Uri,
+                                WordsFound = kCombo.CombinationText.Split(',').ToList()
+                            });
+                        }
+                    }
+                }
             }
 
             if (string.IsNullOrEmpty(crawledPage.Content.Text))
@@ -147,7 +174,8 @@ namespace xSQLWebCrawler.Services
             }
             if (HasBeenProccessed(pageToCrawl.Uri.ToString(), lastProcessedLinks))
             {
-                return new CrawlDecision { Allow = false, Reason = String.Format("Links beyond this point have already been processed") };
+                crawlContext.IsCrawlStopRequested = true;
+                return new CrawlDecision { Allow = false, Reason = String.Format("Links beyond this point have already been processed") };                
             }
             
 
@@ -197,4 +225,6 @@ namespace xSQLWebCrawler.Services
         }
 
     }
+
+    
 }

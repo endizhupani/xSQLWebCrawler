@@ -193,6 +193,8 @@
     <Compile Include="Domain\Entities\ProccessedLink.cs" />
     <Compile Include="Domain\Entities\Site.cs" />
     <Compile Include="Domain\Entities\xSQLCrawlerContext.cs" />
+    <Compile Include="Helpers\BoyerMooreHelpers.cs" />
+    <Compile Include="Helpers\ReportingHelpers.cs" />
     <Compile Include="Infrastructure\NInjectDependencyResolver.cs" />
     <Compile Include="Migrations\Configuration.cs" />
     <Compile Include="Program.cs" />

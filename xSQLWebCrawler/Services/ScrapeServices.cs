@@ -5,10 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using xSQLWebCrawler.Helpers;
 
 namespace xSQLWebCrawler.Services
 {
-    static class ScrapeServices
+    public static class ScrapeServices
     {
         /// <summary>
         /// Checks if the date of the post's content is before the start date
@@ -75,22 +76,43 @@ namespace xSQLWebCrawler.Services
         
 
         /// <summary>
-        /// Checks a HTML page for the specified keywords
+        /// Checks is a HTML page has all the specified keywords
         /// </summary>
         /// <param name="keyWords">A list of keywords to look for</param>
         /// <param name="page">The HTML page to search for keywords</param>
-        /// <param name="keyWordsFound">A list of keywords found in the page</param>
-        /// <returns>True if any of the keywords were found, false otherwise</returns>
-        public static bool CheckForKeyWords(List<string> keyWords, HtmlDocument page, out List<string> keyWordsFound)
+        /// <returns>True if all of the keywords were found, false otherwise</returns>
+        public static bool HasAllKeyWords(this HtmlDocument page, List<PreProcessedWord> keyWords)
         {
             HtmlNode body = page.DocumentNode.SelectSingleNode("//body");
-            foreach (string keyword in keyWords)
+            string bodyStr = body.InnerHtml;
+            foreach (PreProcessedWord keyword in keyWords)
             {
-
+                if (bodyStr.BoyerMooreSearch(keyword) < 0)
+                {
+                    return false;
+                }
             }
-            throw new NotImplementedException("This method is not yet implemented");
+            return true;
         }
 
-
+        /// <summary>
+        /// Checks if a HTML page has any of the specified keywords
+        /// </summary>
+        /// <param name="keyWords">A list of keywords to look for</param>
+        /// <param name="page">The HTML page to search for keywords</param>
+        /// <returns>True if any of the keywords were found, false otherwise</returns>
+        public static bool HasAnyKeyWord(this HtmlDocument page, List<PreProcessedWord> keyWords)
+        {
+            HtmlNode body = page.DocumentNode.SelectSingleNode("//body");
+            string bodyStr = body.InnerHtml;
+            foreach (PreProcessedWord keyword in keyWords)
+            {
+                if (bodyStr.BoyerMooreSearch(keyword) >= 0)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 }

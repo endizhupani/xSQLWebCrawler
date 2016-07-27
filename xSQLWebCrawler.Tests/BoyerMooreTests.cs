@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
+using xSQLWebCrawler.Helpers;
 using xSQLWebCrawler.Services;
 
 namespace xSQLWebCrawler.Tests
@@ -17,7 +18,7 @@ namespace xSQLWebCrawler.Tests
             int[] expectedWidestBorderPos = { 5, 6, 4, 5, 6, 7, 7, 8 };
             int[] widestBorderPosition = new int[pattern.Length + 1];
             //Act
-            int[] shift = StringSearch.GenerateGoodSuffixRuleCase1Table(pattern.ToCharArray(), ref widestBorderPosition);
+            int[] shift = BoyerMooreHelpers.GenerateGoodSuffixRuleCase1Table(pattern.ToCharArray(), ref widestBorderPosition);
             //Assert
             for (int i = 0; i < expectedWidestBorderPos.Length; i++)
             {
@@ -39,7 +40,7 @@ namespace xSQLWebCrawler.Tests
             int[] expectedShift = { 5, 5, 5, 5, 2, 5, 4, 1 };
             int[] expectedWidestBorderPos = { 5, 6, 4, 5, 6, 7, 7, 8 };
             //Act
-            int[] shift = StringSearch.GenerateGoodSuffixRuleCase2Table(pattern, expectedWidestBorderPos, shift1);
+            int[] shift = BoyerMooreHelpers.GenerateGoodSuffixRuleCase2Table(pattern, expectedWidestBorderPos, shift1);
             //Assert
             for (int i = 0; i < expectedShift.Length; i++)
             {
@@ -55,7 +56,7 @@ namespace xSQLWebCrawler.Tests
             string pattern = "EnDiZHupani19940609";
             int expectedIndex = text.ToLower().IndexOf(pattern.ToLower());
             //Act
-            int index = StringSearch.BoyerMooreSearch(pattern, text);
+            int index = text.BoyerMooreSearch(pattern);
             //Assert
             Assert.AreEqual(expectedIndex, index);
         }

@@ -147,7 +147,7 @@ namespace xSQLWebCrawler.Domain.Concrete
         /// </summary>
         /// <param name="link">The link to be added or updated</param>
         /// <returns>True if the operation was successfull, false otherwise</returns>
-        public async Task<bool> AddOrUpdateProcessedLink(ProccessedLink link)
+        public async Task<bool> AddOrUpdateProcessedLinkAsync(ProccessedLink link)
         {
             if (!String.IsNullOrEmpty(link.StrUri))
             {
@@ -177,6 +177,27 @@ namespace xSQLWebCrawler.Domain.Concrete
             try
             {
                 await context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception e)
+            {
+                logger.Error("An Exception occured while saving data to the database. Exception message - " + e.Message);
+                if (e.InnerException != null)
+                {
+                    logger.Error("Inner Exception's message - " + e.InnerException.Message);
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Saves changes to the database
+        /// </summary>
+        /// <returns>True of False depending on whether it successfully saved the data</returns>
+        public bool SaveChanges() {
+            try
+            {
+                context.SaveChanges();
                 return true;
             }
             catch (Exception e)
